@@ -112,4 +112,15 @@ public:
       }
     }
   }
+  double averageDocumentLength() {
+    if (documents.empty())
+      return 0;
+
+    long long total = 0;
+
+    for (auto &doc : documents)
+      total += doc.totalWords;
+
+    return (double)total / documents.size();
+  }
 };

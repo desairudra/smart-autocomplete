@@ -5,7 +5,7 @@
 #include <cmath>
 #include <sstream>
 #include <unordered_map>
-
+#include <unordered_set>
 class SearchEngine {
 private:
   Trie trie;
@@ -55,25 +55,47 @@ public:
     return result;
   }
   unordered_map<int, double> computeScore(vector<string> wordslist) {
+    unordered_map<int, double> score;
 
-    unordered_map<int, double> tf_idf;
-    if (documentManager.totalDocuments() == 0)
-      return tf_idf;
+    int N = documentManager.totalDocuments();
 
-    for (int i = 0; i < wordslist.size(); i++) {
-      TrieNode *node = trie.findPrefixNode(wordslist[i]);
+    if (N == 0)
+      return score;
+
+    double avgDL = documentManager.averageDocumentLength();
+    if (avgDL == 0)
+      return score;
+
+    const double k1 = 1.5;
+    const double b = 0.75;
+    unordered_set<string> uniqueWords(wordslist.begin(), wordslist.end());
+    for (auto &word : uniqueWords) {
+      TrieNode *node = trie.findPrefixNode(word);
+
       if (node == nullptr)
         continue;
 
-      if (node->postingList.empty())
+      int df = node->postingList.size();
+
+      if (df == 0)
         continue;
-      double idf = 1 + log((double)documentManager.totalDocuments() /
-                           node->postingList.size());
+
+      double idf = log(1.0 + (N - df + 0.5) / (df + 0.5));
+
       for (auto &[docId, tf] : node->postingList) {
-        tf_idf[docId] += (tf)*idf;
+        Document &doc = documentManager.getDocument(docId);
+
+        double dl = doc.totalWords;
+
+        double numerator = tf * (k1 + 1);
+
+        double denominator = tf + k1 * (1 - b + b * (dl / avgDL));
+
+        score[docId] += idf * (numerator / denominator);
       }
     }
-    return tf_idf;
+
+    return score;
   }
 
   vector<pair<double, int>> search(const string &query) {
@@ -173,5 +195,8 @@ public:
 
       cout << "\n------------------------------------\n\n";
     }
+  }
+  double averageDocumentLength() {
+    return documentManager.averageDocumentLength();
   }
 };
